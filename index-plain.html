@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeqHub Tutor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom slider styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 12px;
+            border-radius: 6px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: none;
+        }
+        
+        input[type="range"]:disabled::-webkit-slider-thumb {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen py-8">
+    <div class="container mx-auto max-w-4xl">
+        <!-- Quiz Type Selector -->
+        <div class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-900 mb-4">SeqHub Tutor</h1>
+            <div class="flex gap-4 justify-center">
+                <button id="multipleChoiceBtn" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all">
+                    Multiple Choice Quiz
+                </button>
+                <button id="numberSliderBtn" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all">
+                    Number Slider Quiz
+                </button>
+            </div>
+        </div>
+
+        <!-- Multiple Choice Quiz Container -->
+        <div id="multipleChoiceContainer" class="quiz-container hidden">
+            <div class="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
+                <div class="mb-6">
+                    <h2 id="mcTitle" class="text-2xl font-bold text-gray-900 mb-2"></h2>
+                    <p id="mcQuestion" class="text-gray-600"></p>
+                </div>
+
+                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-700">Score:</span>
+                        <span id="mcScore" class="text-lg font-bold text-blue-600">0 / 0</span>
+                    </div>
+                </div>
+
+                <div id="mcOptions" class="space-y-3 mb-6"></div>
+
+                <div class="flex gap-3">
+                    <button id="mcSubmitBtn" class="flex-1 py-3 px-6 rounded-lg font-semibold bg-gray-200 text-gray-400 cursor-not-allowed">
+                        Submit Answer
+                    </button>
+                    <button id="mcResetBtn" class="flex-1 py-3 px-6 rounded-lg font-semibold bg-gray-600 text-white hover:bg-gray-700 transition-all hidden">
+                        Next Question
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Number Slider Quiz Container -->
+        <div id="numberSliderContainer" class="quiz-container hidden">
+            <div class="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
+                <div class="mb-6">
+                    <h2 id="nsTitle" class="text-2xl font-bold text-gray-900 mb-2"></h2>
+                    <p id="nsQuestion" class="text-gray-600"></p>
+                </div>
+
+                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-700">Score:</span>
+                        <span id="nsScore" class="text-lg font-bold text-blue-600">0 / 0</span>
+                    </div>
+                </div>
+
+                <div class="mb-8">
+                    <div class="mb-4 p-6 bg-gray-50 rounded-lg border-2 border-gray-200">
+                        <div class="text-center">
+                            <span id="nsValue" class="text-4xl font-bold text-gray-900">0</span>
+                            <span id="nsUnit" class="text-2xl text-gray-600 ml-2"></span>
+                        </div>
+                    </div>
+
+                    <div class="relative">
+                        <input type="range" id="nsSlider" class="w-full h-3 rounded-lg cursor-pointer">
+                        <div class="flex justify-between mt-2 text-sm text-gray-600">
+                            <span id="nsMinLabel">0</span>
+                            <span id="nsMaxLabel">100</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="nsFeedback" class="mb-6 p-4 rounded-lg hidden"></div>
+
+                <div class="flex gap-3">
+                    <button id="nsSubmitBtn" class="flex-1 py-3 px-6 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all">
+                        Submit Answer
+                    </button>
+                    <button id="nsResetBtn" class="flex-1 py-3 px-6 rounded-lg font-semibold bg-gray-600 text-white hover:bg-gray-700 transition-all hidden">
+                        Next Question
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Quiz Data
+        const quizData = {
+            "type": "NumberSlider",
+            "props": {
+                "title": "Electronics: Ohm's Law and basic components",
+                "questions": [
+                    {
+                        "id": "q1",
+                        "text": "Calculate the current I through a 3 Ω resistor connected to a 9 V voltage source.",
+                        "correctAnswer": 3,
+                        "min": 0,
+                        "max": 5,
+                        "step": 0.1,
+                        "unit": "A"
+                    },
+                    {
+                        "id": "q2",
+                        "text": "Calculate the voltage V across a 4 Ω resistor with a current of 2 A flowing through it.",
+                        "correctAnswer": 8,
+                        "min": 0,
+                        "max": 20,
+                        "step": 0.1,
+                        "unit": "V"
+                    },
+                    {
+                        "id": "q3",
+                        "text": "Calculate the power P dissipated by a circuit with a 5 V supply and a current of 0.2 A.",
+                        "correctAnswer": 1,
+                        "min": 0,
+                        "max": 5,
+                        "step": 0.01,
+                        "unit": "W"
+                    },
+                    {
+                        "id": "q4",
+                        "text": "For a 1000 Ω resistor in series with a 47 µF capacitor, what is the time constant τ in seconds?",
+                        "correctAnswer": 0.047,
+                        "min": 0,
+                        "max": 0.1,
+                        "step": 0.001,
+                        "unit": "s"
+                    }
+                ],
+                "tolerance": 0.01
+            }
+        };
+
+        const multipleChoiceData = {
+            title: "Basic Electronics",
+            questions: [
+                "What is the unit of electrical resistance?",
+                "What does 'LED' stand for?",
+                "Which component is primarily used to store electric charge?"
+            ],
+            options: [
+                [
+                    { id: "1", text: "Volt", isCorrect: false },
+                    { id: "2", text: "Ohm", isCorrect: true },
+                    { id: "3", text: "Ampere", isCorrect: false },
+                    { id: "4", text: "Watt", isCorrect: false }
+                ],
+                [
+                    { id: "1", text: "Light Emitting Diode", isCorrect: true },
+                    { id: "2", text: "Low Energy Device", isCorrect: false },
+                    { id: "3", text: "Linear Energy Diode", isCorrect: false }
+                ],
+                [
+                    { id: "1", text: "Resistor", isCorrect: false },
+                    { id: "2", text: "Capacitor", isCorrect: true },
+                    { id: "3", text: "Inductor", isCorrect: false },
+                    { id: "4", text: "Diode", isCorrect: false }
+                ]
+            ]
+        };
+
+        // Multiple Choice Quiz Class
+        class MultipleChoiceQuiz {
+            constructor(data) {
+                this.data = data;
+                this.selectedOption = null;
+                this.hasSubmitted = false;
+                this.correctCount = 0;
+                this.totalAttempts = 0;
+                this.questionNum = 0;
+                this.initialize();
+            }
+
+            initialize() {
+                document.getElementById('mcTitle').textContent = this.data.title;
+                this.updateQuestion();
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                document.getElementById('mcSubmitBtn').addEventListener('click', () => this.handleSubmit());
+                document.getElementById('mcResetBtn').addEventListener('click', () => this.handleReset());
+            }
+
+            updateQuestion() {
+                const question = this.data.questions[this.questionNum % this.data.questions.length];
+                const options = this.data.options[this.questionNum % this.data.options.length];
+                
+                document.getElementById('mcQuestion').textContent = question;
+                
+                const optionsContainer = document.getElementById('mcOptions');
+                optionsContainer.innerHTML = '';
+                
+                options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.className = 'w-full p-4 text-left rounded-lg border-2 transition-all border-gray-200 bg-white hover:border-blue-300 hover:bg-gray-50 cursor-pointer';
+                    button.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-900">${option.text}</span>
+                        </div>
+                    `;
+                    button.addEventListener('click', () => this.selectOption(option.id, button));
+                    button.dataset.optionId = option.id;
+                    optionsContainer.appendChild(button);
+                });
+
+                this.updateScore();
+            }
+
+            selectOption(optionId, buttonElement) {
+                if (this.hasSubmitted) return;
+
+                // Reset all buttons
+                document.querySelectorAll('#mcOptions button').forEach(btn => {
+                    btn.className = 'w-full p-4 text-left rounded-lg border-2 transition-all border-gray-200 bg-white hover:border-blue-300 hover:bg-gray-50 cursor-pointer';
+                });
+
+                // Highlight selected button
+                buttonElement.className = 'w-full p-4 text-left rounded-lg border-2 transition-all border-blue-500 bg-blue-50 cursor-pointer';
+                
+                this.selectedOption = optionId;
+                this.updateSubmitButton();
+            }
+
+            updateSubmitButton() {
+                const submitBtn = document.getElementById('mcSubmitBtn');
+                if (this.selectedOption && !this.hasSubmitted) {
+                    submitBtn.className = 'flex-1 py-3 px-6 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all cursor-pointer';
+                    submitBtn.disabled = false;
+                } else {
+                    submitBtn.className = 'flex-1 py-3 px-6 rounded-lg font-semibold bg-gray-200 text-gray-400 cursor-not-allowed';
+                    submitBtn.disabled = true;
+                }
+            }
+
+            handleSubmit() {
+                if (!this.selectedOption || this.hasSubmitted) return;
+
+                const options = this.data.options[this.questionNum % this.data.options.length];
+                const selectedOptionData = options.find(opt => opt.id === this.selectedOption);
+                const isCorrect = selectedOptionData?.isCorrect || false;
+
+                this.hasSubmitted = true;
+                this.totalAttempts += 1;
+
+                if (isCorrect) {
+                    this.correctCount += 1;
+                }
+
+                // Update option buttons to show results
+                document.querySelectorAll('#mcOptions button').forEach(btn => {
+                    const optionId = btn.dataset.optionId;
+                    const optionData = options.find(opt => opt.id === optionId);
+                    const isSelected = optionId === this.selectedOption;
+                    const isOptionCorrect = optionData.isCorrect;
+
+                    if (isOptionCorrect) {
+                        btn.className = 'w-full p-4 text-left rounded-lg border-2 transition-all border-green-500 bg-green-50 cursor-not-allowed';
+                        btn.querySelector('div').innerHTML += '<span class="text-green-600 font-semibold">✓</span>';
+                    } else if (isSelected) {
+                        btn.className = 'w-full p-4 text-left rounded-lg border-2 transition-all border-red-500 bg-red-50 cursor-not-allowed';
+                        btn.querySelector('div').innerHTML += '<span class="text-red-600 font-semibold">✗</span>';
+                    } else {
+                        btn.className = 'w-full p-4 text-left rounded-lg border-2 transition-all border-gray-200 bg-white cursor-not-allowed';
+                    }
+                    btn.disabled = true;
+                });
+
+                document.getElementById('mcSubmitBtn').classList.add('hidden');
+                document.getElementById('mcResetBtn').classList.remove('hidden');
+                this.updateScore();
+            }
+
+            handleReset() {
+                this.selectedOption = null;
+                this.hasSubmitted = false;
+                this.questionNum += 1;
+                
+                document.getElementById('mcSubmitBtn').classList.remove('hidden');
+                document.getElementById('mcResetBtn').classList.add('hidden');
+                
+                this.updateQuestion();
+                this.updateSubmitButton();
+            }
+
+            updateScore() {
+                document.getElementById('mcScore').textContent = `${this.correctCount} / ${this.totalAttempts}`;
+            }
+        }
+
+        // Number Slider Quiz Class
+        class NumberSliderQuiz {
+            constructor(data) {
+                this.data = data.props;
+                this.sliderValue = 0;
+                this.hasSubmitted = false;
+                this.correctCount = 0;
+                this.totalAttempts = 0;
+                this.questionNum = 0;
+                this.initialize();
+            }
+
+            initialize() {
+                document.getElementById('nsTitle').textContent = this.data.title;
+                this.updateQuestion();
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                const slider = document.getElementById('nsSlider');
+                slider.addEventListener('input', (e) => this.updateSliderValue(e.target.value));
+                document.getElementById('nsSubmitBtn').addEventListener('click', () => this.handleSubmit());
+                document.getElementById('nsResetBtn').addEventListener('click', () => this.handleReset());
+            }
+
+            updateQuestion() {
+                const question = this.data.questions[this.questionNum % this.data.questions.length];
+                
+                document.getElementById('nsQuestion').textContent = question.text;
+                
+                const slider = document.getElementById('nsSlider');
+                slider.min = question.min;
+                slider.max = question.max;
+                slider.step = question.step || 1;
+                
+                const midpoint = (question.min + question.max) / 2;
+                this.sliderValue = midpoint;
+                slider.value = midpoint;
+                
+                document.getElementById('nsUnit').textContent = question.unit || '';
+                document.getElementById('nsMinLabel').textContent = `${question.min}${question.unit || ''}`;
+                document.getElementById('nsMaxLabel').textContent = `${question.max}${question.unit || ''}`;
+                
+                this.updateSliderDisplay();
+                this.updateScore();
+                this.hideFeedback();
+            }
+
+            updateSliderValue(value) {
+                if (this.hasSubmitted) return;
+                this.sliderValue = parseFloat(value);
+                this.updateSliderDisplay();
+            }
+
+            updateSliderDisplay() {
+                const question = this.data.questions[this.questionNum % this.data.questions.length];
+                document.getElementById('nsValue').textContent = this.sliderValue;
+                
+                const slider = document.getElementById('nsSlider');
+                const percentage = ((this.sliderValue - question.min) / (question.max - question.min)) * 100;
+                
+                if (this.hasSubmitted) {
+                    const isCorrect = Math.abs(this.sliderValue - question.correctAnswer) <= (this.data.tolerance || 0);
+                    slider.style.background = isCorrect ? '#10b981' : '#ef4444';
+                } else {
+                    slider.style.background = `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${percentage}%, #e5e7eb ${percentage}%, #e5e7eb 100%)`;
+                }
+            }
+
+            handleSubmit() {
+                if (this.hasSubmitted) return;
+
+                const question = this.data.questions[this.questionNum % this.data.questions.length];
+                const isCorrect = Math.abs(this.sliderValue - question.correctAnswer) <= (this.data.tolerance || 0);
+
+                this.hasSubmitted = true;
+                this.totalAttempts += 1;
+
+                if (isCorrect) {
+                    this.correctCount += 1;
+                }
+
+                this.showFeedback(isCorrect, question.correctAnswer, question.unit);
+                this.updateSliderDisplay();
+                
+                document.getElementById('nsSlider').disabled = true;
+                document.getElementById('nsSubmitBtn').classList.add('hidden');
+                document.getElementById('nsResetBtn').classList.remove('hidden');
+                this.updateScore();
+            }
+
+            handleReset() {
+                this.hasSubmitted = false;
+                this.questionNum += 1;
+                
+                document.getElementById('nsSlider').disabled = false;
+                document.getElementById('nsSubmitBtn').classList.remove('hidden');
+                document.getElementById('nsResetBtn').classList.add('hidden');
+                
+                this.updateQuestion();
+            }
+
+            showFeedback(isCorrect, correctAnswer, unit) {
+                const feedback = document.getElementById('nsFeedback');
+                feedback.className = `mb-6 p-4 rounded-lg ${isCorrect ? 'bg-green-50 border-2 border-green-500' : 'bg-red-50 border-2 border-red-500'}`;
+                feedback.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <span class="text-2xl ${isCorrect ? 'text-green-600' : 'text-red-600'}">
+                            ${isCorrect ? '✓' : '✗'}
+                        </span>
+                        <div class="flex-1">
+                            <p class="font-semibold ${isCorrect ? 'text-green-900' : 'text-red-900'}">
+                                ${isCorrect ? 'Correct!' : 'Incorrect'}
+                            </p>
+                            <p class="text-sm ${isCorrect ? 'text-green-700' : 'text-red-700'}">
+                                The correct answer is ${correctAnswer}${unit || ''}
+                            </p>
+                        </div>
+                    </div>
+                `;
+                feedback.classList.remove('hidden');
+            }
+
+            hideFeedback() {
+                document.getElementById('nsFeedback').classList.add('hidden');
+            }
+
+            updateScore() {
+                document.getElementById('nsScore').textContent = `${this.correctCount} / ${this.totalAttempts}`;
+            }
+        }
+
+        // App initialization
+        let currentQuiz = null;
+
+        function showMultipleChoice() {
+            document.getElementById('multipleChoiceContainer').classList.remove('hidden');
+            document.getElementById('numberSliderContainer').classList.add('hidden');
+            if (currentQuiz instanceof NumberSliderQuiz) {
+                currentQuiz = null;
+            }
+            if (!currentQuiz) {
+                currentQuiz = new MultipleChoiceQuiz(multipleChoiceData);
+            }
+        }
+
+        function showNumberSlider() {
+            document.getElementById('numberSliderContainer').classList.remove('hidden');
+            document.getElementById('multipleChoiceContainer').classList.add('hidden');
+            if (currentQuiz instanceof MultipleChoiceQuiz) {
+                currentQuiz = null;
+            }
+            if (!currentQuiz) {
+                currentQuiz = new NumberSliderQuiz(quizData);
+            }
+        }
+
+        // Setup navigation
+        document.getElementById('multipleChoiceBtn').addEventListener('click', showMultipleChoice);
+        document.getElementById('numberSliderBtn').addEventListener('click', showNumberSlider);
+
+        // Initialize with number slider quiz (matching the original data)
+        showNumberSlider();
+    </script>
+</body>
+</html>
