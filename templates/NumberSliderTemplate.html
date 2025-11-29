@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeqHub Tutor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 12px;
+            border-radius: 6px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: none;
+        }
+        
+        input[type="range"]:disabled::-webkit-slider-thumb {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen py-8">
+        <div id="numberSliderContainer" class="quiz-container">
+            <div class="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
+                <div class="mb-6">
+                    <h2 id="nsTitle" class="text-2xl font-bold text-gray-900 mb-2"></h2>
+                    <p id="nsQuestion" class="text-gray-600"></p>
+                </div>
+
+                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-700">Score:</span>
+                        <span id="nsScore" class="text-lg font-bold text-blue-600">0 / 0</span>
+                    </div>
+                </div>
+
+                <div class="mb-8">
+                    <div class="mb-4 p-6 bg-gray-50 rounded-lg border-2 border-gray-200">
+                        <div class="text-center">
+                            <span id="nsValue" class="text-4xl font-bold text-gray-900">0</span>
+                            <span id="nsUnit" class="text-2xl text-gray-600 ml-2"></span>
+                        </div>
+                    </div>
+
+                    <div class="relative">
+                        <input type="range" id="nsSlider" class="w-full h-3 rounded-lg cursor-pointer">
+                        <div class="flex justify-between mt-2 text-sm text-gray-600">
+                            <span id="nsMinLabel">0</span>
+                            <span id="nsMaxLabel">100</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="nsFeedback" class="mb-6 p-4 rounded-lg hidden"></div>
+
+                <div class="flex gap-3">
+                    <button id="nsSubmitBtn" class="flex-1 py-3 px-6 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all">
+                        Submit Answer
+                    </button>
+                    <button id="nsResetBtn" class="flex-1 py-3 px-6 rounded-lg font-semibold bg-gray-600 text-white hover:bg-gray-700 transition-all hidden">
+                        Next Question
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const quizData = {};
+
+        class NumberSliderQuiz {
+            constructor(data) {
+                this.data = data.props;
+                this.sliderValue = 0;
+                this.hasSubmitted = false;
+                this.correctCount = 0;
+                this.totalAttempts = 0;
+                this.questionNum = 0;
+                this.initialize();
+            }
+
+            initialize() {
+                document.getElementById('nsTitle').textContent = this.data.title;
+                this.updateQuestion();
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                const slider = document.getElementById('nsSlider');
+                slider.addEventListener('input', (e) => this.updateSliderValue(e.target.value));
+                document.getElementById('nsSubmitBtn').addEventListener('click', () => this.handleSubmit());
+                document.getElementById('nsResetBtn').addEventListener('click', () => this.handleReset());
+            }
+
+            updateQuestion() {
+                const question = this.data.questions[this.questionNum % this.data.questions.length];
+                
+                document.getElementById('nsQuestion').textContent = question.text;
+                
+                const slider = document.getElementById('nsSlider');
+                slider.min = question.min;
+                slider.max = question.max;
+                slider.step = question.step || 1;
+                
+                const midpoint = (question.min + question.max) / 2;
+                this.sliderValue = midpoint;
+                slider.value = midpoint;
+                
+                document.getElementById('nsUnit').textContent = question.unit || '';
+                document.getElementById('nsMinLabel').textContent = `${question.min}${question.unit || ''}`;
+                document.getElementById('nsMaxLabel').textContent = `${question.max}${question.unit || ''}`;
+                
+                this.updateSliderDisplay();
+                this.updateScore();
+                this.hideFeedback();
+            }
+
+            updateSliderValue(value) {
+                if (this.hasSubmitted) return;
+                this.sliderValue = parseFloat(value);
+                this.updateSliderDisplay();
+            }
+
+            updateSliderDisplay() {
+                const question = this.data.questions[this.questionNum % this.data.questions.length];
+                document.getElementById('nsValue').textContent = this.sliderValue;
+                
+                const slider = document.getElementById('nsSlider');
+                const percentage = ((this.sliderValue - question.min) / (question.max - question.min)) * 100;
+                
+                if (this.hasSubmitted) {
+                    const isCorrect = Math.abs(this.sliderValue - question.correctAnswer) <= (this.data.tolerance || 0);
+                    slider.style.background = isCorrect ? '#10b981' : '#ef4444';
+                } else {
+                    slider.style.background = `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${percentage}%, #e5e7eb ${percentage}%, #e5e7eb 100%)`;
+                }
+            }
+
+            handleSubmit() {
+                if (this.hasSubmitted) return;
+
+                const question = this.data.questions[this.questionNum % this.data.questions.length];
+                const isCorrect = Math.abs(this.sliderValue - question.correctAnswer) <= (this.data.tolerance || 0);
+
+                this.hasSubmitted = true;
+                this.totalAttempts += 1;
+
+                if (isCorrect) {
+                    this.correctCount += 1;
+                }
+
+                this.showFeedback(isCorrect, question.correctAnswer, question.unit);
+                this.updateSliderDisplay();
+                
+                document.getElementById('nsSlider').disabled = true;
+                document.getElementById('nsSubmitBtn').classList.add('hidden');
+                document.getElementById('nsResetBtn').classList.remove('hidden');
+                this.updateScore();
+            }
+
+            handleReset() {
+                this.hasSubmitted = false;
+                this.questionNum += 1;
+                
+                document.getElementById('nsSlider').disabled = false;
+                document.getElementById('nsSubmitBtn').classList.remove('hidden');
+                document.getElementById('nsResetBtn').classList.add('hidden');
+                
+                this.updateQuestion();
+            }
+
+            showFeedback(isCorrect, correctAnswer, unit) {
+                const feedback = document.getElementById('nsFeedback');
+                feedback.className = `mb-6 p-4 rounded-lg ${isCorrect ? 'bg-green-50 border-2 border-green-500' : 'bg-red-50 border-2 border-red-500'}`;
+                feedback.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <span class="text-2xl ${isCorrect ? 'text-green-600' : 'text-red-600'}">
+                            ${isCorrect ? '✓' : '✗'}
+                        </span>
+                        <div class="flex-1">
+                            <p class="font-semibold ${isCorrect ? 'text-green-900' : 'text-red-900'}">
+                                ${isCorrect ? 'Correct!' : 'Incorrect'}
+                            </p>
+                            <p class="text-sm ${isCorrect ? 'text-green-700' : 'text-red-700'}">
+                                The correct answer is ${correctAnswer}${unit || ''}
+                            </p>
+                        </div>
+                    </div>
+                `;
+                feedback.classList.remove('hidden');
+            }
+
+            hideFeedback() {
+                document.getElementById('nsFeedback').classList.add('hidden');
+            }
+
+            updateScore() {
+                document.getElementById('nsScore').textContent = `${this.correctCount} / ${this.totalAttempts}`;
+            }
+        }
+
+        let currentQuiz = new NumberSliderQuiz(quizData);
+    </script>
+</body>
+</html>

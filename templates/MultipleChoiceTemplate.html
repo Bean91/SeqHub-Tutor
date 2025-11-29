@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeqHub Tutor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 12px;
+            border-radius: 6px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: none;
+        }
+        
+        input[type="range"]:disabled::-webkit-slider-thumb {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen py-8">
+    <div id="multipleChoiceContainer" class="quiz-container">
+        <div class="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
+            <div class="mb-6">
+                <h2 id="mcTitle" class="text-2xl font-bold text-gray-900 mb-2"></h2>
+                <p id="mcQuestion" class="text-gray-600"></p>
+            </div>
+
+            <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-700">Score:</span>
+                    <span id="mcScore" class="text-lg font-bold text-blue-600">0 / 0</span>
+                </div>
+            </div>
+
+            <div id="mcOptions" class="space-y-3 mb-6"></div>
+
+            <div class="flex gap-3">
+                <button id="mcSubmitBtn" class="flex-1 py-3 px-6 rounded-lg font-semibold bg-gray-200 text-gray-400 cursor-not-allowed">
+                    Submit Answer
+                </button>
+                <button id="mcResetBtn" class="flex-1 py-3 px-6 rounded-lg font-semibold bg-gray-600 text-white hover:bg-gray-700 transition-all hidden">
+                    Next Question
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const quizData = {};
+
+        class MultipleChoiceQuiz {
+            constructor(data) {
+                this.data = data.props;
+                this.selectedOption = null;
+                this.hasSubmitted = false;
+                this.correctCount = 0;
+                this.totalAttempts = 0;
+                this.questionNum = 0;
+                this.initialize();
+            }
+
+            initialize() {
+                document.getElementById('mcTitle').textContent = this.data.title;
+                this.updateQuestion();
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                document.getElementById('mcSubmitBtn').addEventListener('click', () => this.handleSubmit());
+                document.getElementById('mcResetBtn').addEventListener('click', () => this.handleReset());
+            }
+
+            updateQuestion() {
+                const question = this.data.questions[this.questionNum % this.data.questions.length];
+                const options = this.data.options[this.questionNum % this.data.options.length];
+                
+                document.getElementById('mcQuestion').textContent = question;
+                
+                const optionsContainer = document.getElementById('mcOptions');
+                optionsContainer.innerHTML = '';
+                
+                options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.className = 'w-full p-4 text-left rounded-lg border-2 transition-all border-gray-200 bg-white hover:border-blue-300 hover:bg-gray-50 cursor-pointer';
+                    button.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-900">${option.text}</span>
+                        </div>
+                    `;
+                    button.addEventListener('click', () => this.selectOption(option.id, button));
+                    button.dataset.optionId = option.id;
+                    optionsContainer.appendChild(button);
+                });
+
+                this.updateScore();
+            }
+
+            selectOption(optionId, buttonElement) {
+                if (this.hasSubmitted) return;
+                document.querySelectorAll('#mcOptions button').forEach(btn => {
+                    btn.className = 'w-full p-4 text-left rounded-lg border-2 transition-all border-gray-200 bg-white hover:border-blue-300 hover:bg-gray-50 cursor-pointer';
+                });
+                buttonElement.className = 'w-full p-4 text-left rounded-lg border-2 transition-all border-blue-500 bg-blue-50 cursor-pointer';
+                
+                this.selectedOption = optionId;
+                this.updateSubmitButton();
+            }
+
+            updateSubmitButton() {
+                const submitBtn = document.getElementById('mcSubmitBtn');
+                if (this.selectedOption && !this.hasSubmitted) {
+                    submitBtn.className = 'flex-1 py-3 px-6 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all cursor-pointer';
+                    submitBtn.disabled = false;
+                } else {
+                    submitBtn.className = 'flex-1 py-3 px-6 rounded-lg font-semibold bg-gray-200 text-gray-400 cursor-not-allowed';
+                    submitBtn.disabled = true;
+                }
+            }
+
+            handleSubmit() {
+                if (!this.selectedOption || this.hasSubmitted) return;
+
+                const options = this.data.options[this.questionNum % this.data.options.length];
+                const selectedOptionData = options.find(opt => opt.id === this.selectedOption);
+                const isCorrect = selectedOptionData?.isCorrect || false;
+
+                this.hasSubmitted = true;
+                this.totalAttempts += 1;
+
+                if (isCorrect) {
+                    this.correctCount += 1;
+                }
+                document.querySelectorAll('#mcOptions button').forEach(btn => {
+                    const optionId = btn.dataset.optionId;
+                    const optionData = options.find(opt => opt.id === optionId);
+                    const isSelected = optionId === this.selectedOption;
+                    const isOptionCorrect = optionData.isCorrect;
+
+                    if (isOptionCorrect) {
+                        btn.className = 'w-full p-4 text-left rounded-lg border-2 transition-all border-green-500 bg-green-50 cursor-not-allowed';
+                        btn.querySelector('div').innerHTML += '<span class="text-green-600 font-semibold">✓</span>';
+                    } else if (isSelected) {
+                        btn.className = 'w-full p-4 text-left rounded-lg border-2 transition-all border-red-500 bg-red-50 cursor-not-allowed';
+                        btn.querySelector('div').innerHTML += '<span class="text-red-600 font-semibold">✗</span>';
+                    } else {
+                        btn.className = 'w-full p-4 text-left rounded-lg border-2 transition-all border-gray-200 bg-white cursor-not-allowed';
+                    }
+                    btn.disabled = true;
+                });
+
+                document.getElementById('mcSubmitBtn').classList.add('hidden');
+                document.getElementById('mcResetBtn').classList.remove('hidden');
+                this.updateScore();
+            }
+
+            handleReset() {
+                this.selectedOption = null;
+                this.hasSubmitted = false;
+                this.questionNum += 1;
+                
+                document.getElementById('mcSubmitBtn').classList.remove('hidden');
+                document.getElementById('mcResetBtn').classList.add('hidden');
+                
+                this.updateQuestion();
+                this.updateSubmitButton();
+            }
+
+            updateScore() {
+                document.getElementById('mcScore').textContent = `${this.correctCount} / ${this.totalAttempts}`;
+            }
+        }
+
+        let currentQuiz = new MultipleChoiceQuiz(quizData);
+    </script>
+</body>
+</html>

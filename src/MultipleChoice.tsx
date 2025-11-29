@@ -54,7 +54,6 @@ const MultipleChoice: React.FC<MultipleChoiceProps> = ({ title, questions, optio
           </span>
         </div>
       </div>
-
       <div className="space-y-3 mb-6">
         {options[questionNum % options.length].map((option) => {
           const isSelected = selectedOption === option.id;
