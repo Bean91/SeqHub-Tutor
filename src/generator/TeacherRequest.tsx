@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { useLocalStorage } from './hooks/useLocalStorage';
-import './style.css';
+import React, { useEffect, useState, type ChangeEvent } from 'react';
+import { useLocalStorage } from '../hooks/useLocalStorage';
+import '../style.css';
 
 interface Option {
     id: string;
@@ -49,11 +49,12 @@ interface response {
     },
 }
 
-const TeacherRequest: React.FC = () => {
+const TeacherRequest: React.FC<{course: number}> = ({ course }) => {
+    const [accessToken, ] = useLocalStorage<string>("/access_token", "");
     const [prompt, setPrompt] = useLocalStorage<string>("prompt", "");
     const [exercises, setExercises] = useLocalStorage<response | string>("exercises", "");
     const [submitted, setSubmitted] = useLocalStorage<boolean>("submitted", false);
-    const [openStates, setOpenStates] = useLocalStorage<{ [key: number]: boolean }>("openStates", {});
+    const [openStates, setOpenStates] = useState<{ [key: number]: boolean }>({});
     const [iframeHtml, setIframeHtml] = useLocalStorage<{ [key: number]: string }>("iframeHtml", {});
 
     useEffect(() => {
@@ -68,14 +69,14 @@ const TeacherRequest: React.FC = () => {
                 const filledHtml = fillTemplate(template, item);
                 newIframeHtml[index] = filledHtml;
             });
-
+            console.log(newIframeHtml);
             setIframeHtml(newIframeHtml);
         }
 
         loadTemplates();
     }, [exercises]);
 
-    function handlePromptChange(e) {
+    function handlePromptChange(e: ChangeEvent<HTMLTextAreaElement>) {
         setPrompt(e.target.value);
     }
 
@@ -129,8 +130,90 @@ const TeacherRequest: React.FC = () => {
         return html;
     }
 
+    async function handleAddToModule(html: string) {
+        const module_response = await fetch("https://ltd.seqhubai.com/curriculum/modules?course_id="+course, {
+            "method": "GET",
+            "headers": {
+                "Authorization": "Bearer " + accessToken
+            }
+        });
+        const module_data = await module_response.json();
+        const module = module_data[module_data.length-1];
+        const module_id = module.id;
+        
+
+        const sections_response = await fetch("https://ltd.seqhubai.com/api/readingmodules/"+module_id+"/sections", {
+            "method": "GET",
+            "headers": {
+                "Authorization": "Bearer " + accessToken
+            }
+        });
+
+        const sections_data = await sections_response.json();
+        console.log(sections_data);
+        const length = sections_data.sections.length;
+        sections_data.sections.push({
+            "id": length,
+            "items": [
+                {
+                    "aiContext": "",
+                    "content": html,
+                    "cumulativeReflection": false,
+                    "instruction": "",
+                    "item_index": 0,
+                    "section_index": length,
+                    "type": "html",
+                    "editorTemplate": null,
+                }
+            ]
+        });
+        console.log(length)
+        for (let i = 0; i < length; i++) {
+            console.log(i)
+            for (let k = 0; k < sections_data.sections[i].items.length; k++) {
+                console.log(k)
+                console.log(sections_data.sections[i].items[k])
+                sections_data.sections[i].items[k] = {
+                    "aiContext": sections_data.sections[i].items[k].aiContext,
+                    "content": sections_data.sections[i].items[k].content,
+                    "cumulativeReflection": sections_data.sections[i].items[k].cumulativeReflection,
+                    "instruction": sections_data.sections[i].items[k].instruction,
+                    "item_index": sections_data.sections[i].items[k].item_index,
+                    "section_index": sections_data.sections[i].items[k].section_index,
+                    "type": sections_data.sections[i].items[k].item_type,
+                    "editorTemplate": sections_data.sections[i].items[k].editorTemplate,
+                }
+            }
+        }
+
+        console.log({
+                "name": module.name,
+                "module_type": module.type,
+                "moduleIndex": module.module_index,
+                "description": module.description,
+                ...sections_data,
+                "status": "draft",
+            })
+
+        fetch("https://ltd.seqhubai.com/curriculum/modules/reading/"+module_id+"?course_id="+course, {
+            "method": "PATCH",
+            "headers": {
+                "Authorization": "Bearer " + accessToken,
+                "Content-Type": "application/json"
+            },
+            "body": JSON.stringify({
+                "name": module.name,
+                "module_type": module.type,
+                "moduleIndex": module.module_index,
+                "description": module.description,
+                ...sections_data,
+                "status": "draft",
+            })
+        })
+    }
+
     return (
-        <div className={"max-w-2xl mx-auto my-16 p-6 bg-gray-600 rounded-lg shadow-lg"}>
+        <div className={"max-w-2xl mx-auto mt-8 p-6 bg-gray-600 rounded-lg shadow-lg"}>
             <div className={"mb-6 text-center"}>
                 <h2 className={"text-2xl font-bold text-gray-300 mb-2"}>Generate Exercises</h2>
                 <p className={"text-white"}>AI will generate you multiple exercises with your prompt</p>
@@ -151,13 +234,13 @@ const TeacherRequest: React.FC = () => {
                         const isOpen = openStates[index] || false;
 
                         return (
-                            <div key={index} className="grid grid-cols-4 p-4 bg-gray-700 rounded mb-4 shadow">
+                            <div key={index} className={"grid grid-cols-4 p-4 bg-gray-700 rounded mb-4 shadow"}>
 
-                                <span className="block text-lg font-bold text-white mb-2 col-span-4 text-center">
+                                <span className={"block text-lg font-bold text-white mb-2 col-span-4 text-center"}>
                                     {item.props.title ?? "Untitled Exercise"}
                                 </span>
 
-                                <span className="text-sm text-gray-300 col-span-2 text-center">
+                                <span className={"text-sm text-gray-300 col-span-2 text-center"}>
                                     {item.type}
                                 </span>
 
@@ -168,17 +251,24 @@ const TeacherRequest: React.FC = () => {
                                             [index]: !prev[index]
                                         }))
                                     }
-                                    className="h-8 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 col-span-2">
+                                    className={"h-8 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 col-span-2"}>
                                     {isOpen ? "Hide Preview" : "Show Preview"}
                                 </button>
 
                                 {isOpen && (
-                                    <div className="mt-3 border border-gray-600 rounded overflow-scroll col-span-4">
+                                    <div className={"mt-3 border border-gray-600 rounded overflow-scroll col-span-4"}>
                                         <iframe
                                             srcDoc={iframeHtml[index] || "<!-- Loading template... -->"}
-                                            className="w-full h-64 bg-white"/>
+                                            className="w-full h-[512px] bg-white"/>
                                     </div>
                                 )}
+
+                                <button 
+                                    className={"h-8 px-3 mt-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 col-span-4 text-center"}
+                                    disabled={course === -1}
+                                    onClick={() => handleAddToModule(iframeHtml[index])}>
+                                    Add to module.
+                                </button>
                             </div>
                         );
                     })}

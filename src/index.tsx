@@ -1,10 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './style.css'
-import TeacherRequest from './TeacherRequest'
+import Navbar from './Navbar'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <TeacherRequest />
+    <Navbar location={"Home"} />
   </StrictMode>,
 )

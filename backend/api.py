@@ -34,32 +34,32 @@ async def teacher_generate(input: Prompt):
         Here are the following interfaces and typings for the <MultipleChoice /> prop:
 
         interface Option {
-        id: string;
-        text: string;
-        isCorrect: boolean;
+            id: string;
+            text: string;
+            isCorrect: boolean;
         }
 
         interface MultipleChoiceProps {
-        title: string;
-        questions: string[];
-        options: Option[][];
+            title: string;
+            questions: string[];
+            options: Option[][];
         }
 
         And here are the following interfaces and typings for the <NumberSlider /> prop:
         interface Question {
-        id: string;
-        text: string;
-        correctAnswer: number;
-        min: number;
-        max: number;
-        step?: number;
-        unit?: string;
+            id: string;
+            text: string;
+            correctAnswer: number;
+            min: number;
+            max: number;
+            step?: number;
+            unit?: string;
         }
 
         interface NumberSliderProps {
-        title: string;
-        questions: Question[];
-        tolerance?: number;
+            title: string;
+            questions: Question[];
+            tolerance?: number;
         }
 
         #!!Important!!
